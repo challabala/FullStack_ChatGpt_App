@@ -1,28 +1,41 @@
 import os
 import uuid
+from dotenv import load_dotenv
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view
-from openai import OpenAI
-from dotenv import load_dotenv
-from chat_app.serializers import ChatMessageSerializer, ChatSerializers
-from chat_app.models import Chat, ChatMessage, CustomUser
-from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.http import HttpResponse
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from openai import OpenAI
+
+from chat_app.models import Chat, ChatMessage, CustomUser
+from chat_app.serializers import ChatMessageSerializer, ChatSerializers
 
 load_dotenv()
 
-def hello(req):
-    return HttpResponse("Hello Api Is Working")
+# --------------------------------------------------
+# BASIC TEST API
+# --------------------------------------------------
+def hello(request):
+    return HttpResponse("Hello API is working 🚀")
 
 
+# --------------------------------------------------
+# OPENAI HELPERS
+# --------------------------------------------------
 def get_client():
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-def createChatTitle(user_message: str) -> str:
+def create_chat_title(user_message: str) -> str:
     try:
         client = get_client()
         response = client.responses.create(
@@ -43,22 +56,27 @@ def createChatTitle(user_message: str) -> str:
         return user_message[:50]
 
 
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
-
+# --------------------------------------------------
+# JWT LOGIN (CSRF FIXED)
+# --------------------------------------------------
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        data['user'] = {
-            'username': self.user.username,
-            'email': self.user.email,
+        data["user"] = {
+            "username": self.user.username,
+            "email": self.user.email,
         }
         return data
 
+
+@method_decorator(csrf_exempt, name="dispatch")
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
 
+# --------------------------------------------------
+# REGISTER USER
+# --------------------------------------------------
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register(request):
@@ -67,24 +85,41 @@ def register(request):
     password = request.data.get("password")
 
     if not username or not email or not password:
-        return Response({"error": "Missing fields"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Missing fields"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     if CustomUser.objects.filter(username=username).exists():
-        return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Username already exists"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    user = CustomUser.objects.create_user(username=username, email=email, password=password)
+    user = CustomUser.objects.create_user(
+        username=username,
+        email=email,
+        password=password
+    )
+
     refresh = RefreshToken.for_user(user)
 
-    return Response({
-        "refresh": str(refresh),
-        "access": str(refresh.access_token),
-        "user": {
-            "username": user.username,
-            "email": user.email
-        }
-    }, status=status.HTTP_201_CREATED)
+    return Response(
+        {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": {
+                "username": user.username,
+                "email": user.email,
+            },
+        },
+        status=status.HTTP_201_CREATED
+    )
 
 
+# --------------------------------------------------
+# CHAT WITH GPT
+# --------------------------------------------------
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def prompt_gpt(request):
@@ -93,23 +128,29 @@ def prompt_gpt(request):
 
     if not content:
         return Response(
-            {"error": "No prompt was provided."},
+            {"error": "No prompt was provided"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # ✅ UUID SAFE HANDLING
+    # UUID safe handling
     try:
         chat_uuid = uuid.UUID(chat_id) if chat_id else uuid.uuid4()
     except ValueError:
         chat_uuid = uuid.uuid4()
 
-    chat, created = Chat.objects.get_or_create(id=chat_uuid, defaults={'user': request.user})
+    chat, created = Chat.objects.get_or_create(
+        id=chat_uuid,
+        defaults={"user": request.user}
+    )
 
     if not created and chat.user != request.user:
-        return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response(
+            {"error": "Unauthorized"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
     if created or not chat.title:
-        chat.title = createChatTitle(content)
+        chat.title = create_chat_title(content)
         chat.save()
 
     ChatMessage.objects.create(
@@ -118,7 +159,7 @@ def prompt_gpt(request):
         content=content
     )
 
-    # last 10 messages, oldest → newest
+    # last 10 messages (oldest → newest)
     chat_messages = chat.messages.order_by("-created_at")[:10][::-1]
 
     openai_messages = [
@@ -159,20 +200,29 @@ def prompt_gpt(request):
     )
 
 
-@api_view(['GET'])
+# --------------------------------------------------
+# GET CHAT MESSAGES
+# --------------------------------------------------
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_chat_messages(req, pk):
+def get_chat_messages(request, pk):
     try:
-        chat = Chat.objects.get(id=pk, user=req.user)
+        chat = Chat.objects.get(id=pk, user=request.user)
     except Chat.DoesNotExist:
-        return Response({"error": "Chat not found"}, status=status.HTTP_404_NOT_FOUND)
-    
-    chatmessages = chat.messages.all()
-    serializer = ChatMessageSerializer(chatmessages, many=True)
+        return Response(
+            {"error": "Chat not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    messages = chat.messages.all()
+    serializer = ChatMessageSerializer(messages, many=True)
     return Response(serializer.data)
 
 
-@api_view(['GET'])
+# --------------------------------------------------
+# GET USER CHATS
+# --------------------------------------------------
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_user_chats(request):
     search_query = request.query_params.get("search", "")
@@ -185,12 +235,21 @@ def get_user_chats(request):
     return Response(serializer.data)
 
 
-@api_view(['DELETE'])
+# --------------------------------------------------
+# DELETE CHAT
+# --------------------------------------------------
+@api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_chat(request, pk):
     try:
         chat = Chat.objects.get(id=pk, user=request.user)
         chat.delete()
-        return Response({"message": "Chat deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"message": "Chat deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
+        )
     except Chat.DoesNotExist:
-        return Response({"error": "Chat not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Chat not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
