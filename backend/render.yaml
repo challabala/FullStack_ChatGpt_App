@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: fullstack-chat-backend
+    env: python
+    region: ohio
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn backend.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: DEBUG
+        value: 'False'
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: '*'
