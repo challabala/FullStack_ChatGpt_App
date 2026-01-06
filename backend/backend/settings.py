@@ -74,7 +74,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5174,https://full-stack-chat-gpt-app-git-main-challa-balajis-projects.vercel.app/').split(',')
+CORS_ALLOWED_ORIGINS = True #os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5174').split(',')
 
 
 ROOT_URLCONF = 'backend.urls'
