@@ -1,16 +1,71 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# 🎨 Promptify Frontend – React (Vite)
 
-Currently, two official plugins are available:
+This is the frontend for **Promptify**, built using **React 19** and **Vite**,  
+featuring a modern UI, Light/Dark mode toggle, and seamless backend integration.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## ⚙️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19
+- Vite
+- React Router DOM
+- Axios
+- TanStack React Query
+- Tailwind CSS
+- Radix UI
+- shadcn/ui
+- Lucide Icons
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🌗 UI Features
+
+- Light & Dark theme toggle
+- Responsive design
+- Clean chat interface
+- Smooth user experience
+
+---
+
+## 🔑 Environment Variables
+
+Create a `.env` file inside the `frontend/` directory:
+
+VITE_API_BASE_URL = https://full-stack-chat-gpt-app.vercel.app/
+
+## Setup Instructions
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+## Project Structure
+
+src/
+├── components/   # Reusable UI components
+├── pages/        # Page-level components
+├── hooks/        # Custom React hooks
+├── lib/          # API helpers & axios config
+└── index.css     # Global styles
+
+## 🔗 API Integration
+
+Axios for HTTP requests
+React Query for caching & state management
+JWT token attached to requests
+Fully decoupled backend communication
+
+## 🚀 Deployment
+
+Hosted on Vercel
+Optimized Vite production build
+Environment-based API configuration
+Secure CORS-enabled backend communication
+
